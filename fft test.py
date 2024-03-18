@@ -19,7 +19,7 @@ AUDIO_FILE = "sample 3 - piano (short sample).wav"
 
 # Configuration
 FPS = 30
-FFT_WINDOW_SECONDS = 0.25  # how many seconds of audio make up an FFT window
+FFT_WINDOW_SECONDS = 1  # how many seconds of audio make up an FFT window
 
 # Note range to display
 FREQ_MIN = 10
@@ -31,7 +31,7 @@ NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
 # Output size. Generally use SCALE for higher res, unless you need a non-standard aspect ratio.
 RESOLUTION = (1920, 1080)
-SCALE = 2  # 0.5=QHD(960x540), 1=HD(1920x1080), 2=4K(3840x2160)
+SCALE = 1  # 0.5=QHD(960x540), 1=HD(1920x1080), 2=4K(3840x2160)
 
 fs, data = wavfile.read(AUDIO_FILE)
 audio = data.T[0]
@@ -93,7 +93,7 @@ def find_top_notes(fft, num):
     idx = 0
     found = []
     found_note = set()
-    while ((idx < len(lst)) and (len(found) < num)):
+    while idx < len(lst):
         f = xf[lst[idx][0]]
         y = lst[idx][1]
         n = freq_to_number(f)
@@ -109,7 +109,11 @@ def find_top_notes(fft, num):
     return found
 
 
-def freq_to_number(f): return 69 + 12 * np.log2(f / 440.0)
+def freq_to_number(f):
+    if f <= 0:
+        return 0  # lub wartość, która jest odpowiednia dla twojego zastosowania
+    else:
+        return 69 + 12 * np.log2(f / 440.0)
 
 
 def number_to_freq(n): return 440 * 2.0 ** ((n - 69) / 12.0)
@@ -122,6 +126,7 @@ window = 0.5 * (1 - np.cos(np.linspace(0, 2 * np.pi, FFT_WINDOW_SIZE, False)))
 
 xf = np.fft.rfftfreq(FFT_WINDOW_SIZE, 1 / fs)
 FRAME_COUNT = int(AUDIO_LENGTH * FPS)
+print(AUDIO_LENGTH)
 FRAME_OFFSET = int(len(audio) / FRAME_COUNT)
 
 mx = 0
