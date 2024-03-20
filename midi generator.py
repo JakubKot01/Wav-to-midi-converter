@@ -1,17 +1,18 @@
 import pickle
-import mido
 from mido import Message, MidiFile, MidiTrack
 from pprint import pprint
 
 BPM = 84
 FPS = 30
 
-quarter_note_length = 60 / 84
+quarter_note_length = 60 / BPM
 sixteenth_note_length = quarter_note_length / 4
 
 frame_length = 1 / FPS
 
-beat_length = 120
+ticks_per_quarter_note = 480
+
+ticks_per_frame = 20
 
 # Odczytaj tablicę z pliku
 with open('big_notes_result.pickle', 'rb') as file:
@@ -44,10 +45,6 @@ note_to_midi = {
     "F9": 125, "F#9": 126, "Gb9": 126, "G9": 127
 }
 
-# Testowanie mapowania
-print("Numer dźwięku MIDI dla A4:", note_to_midi["A4"])
-print("Numer dźwięku MIDI dla C#5:", note_to_midi["C#5"])
-
 
 mid = MidiFile()
 track = MidiTrack()
@@ -61,13 +58,17 @@ previous_notes = []
 current_time = 0
 current_time_offset = 0
 for notes in big_notes_result:
-    if current_time_offset > quarter_note_length:
-        current_time += beat_length
+    notes = sorted(notes, key=lambda x: note_to_midi[x[1]])
+    if current_time_offset >= quarter_note_length:
+        current_time += ticks_per_quarter_note
         current_time_offset = 0
     for note in notes:
-        current_notes.append(note[1])
-        if note[1] not in previous_notes:
-            track.append(Message('note_on', note=int(note_to_midi[note[1]]), velocity=64, time=current_time))
+        note_name = note[1]
+        current_notes.append(note_name)
+        if note_name not in previous_notes:
+            track.append(Message('note_on', note=int(note_to_midi[note_name]), velocity=64, time=current_time))
+    print(f"current notes: {current_notes}, previous notes: {previous_notes}")
+    print(f'offset: {current_time_offset}, current time: {current_time}')
     for note in previous_notes:
         if note not in current_notes:
             track.append(Message('note_off', note=int(note_to_midi[note]), velocity=64, time=current_time))
@@ -75,5 +76,7 @@ for notes in big_notes_result:
     previous_notes = current_notes
     current_notes = []
 
-pprint(mid)
+# pprint(mid)
 mid.save('result.mid')
+
+print(frame_length)
