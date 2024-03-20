@@ -1,8 +1,10 @@
 import pickle
-from mido import Message, MidiFile, MidiTrack
+from mido import MetaMessage, Message, MidiFile, MidiTrack
 from pprint import pprint
+#Music21
 
-BPM = 84
+# BPM = 84
+BPM = 120
 FPS = 30
 
 quarter_note_length = 60 / BPM
@@ -10,9 +12,7 @@ sixteenth_note_length = quarter_note_length / 4
 
 frame_length = 1 / FPS
 
-ticks_per_quarter_note = 480
-
-ticks_per_frame = 20
+ticks_per_quarter_note = 256
 
 # Odczytaj tablicę z pliku
 with open('big_notes_result.pickle', 'rb') as file:
@@ -47,16 +47,25 @@ note_to_midi = {
 
 
 mid = MidiFile()
-track = MidiTrack()
-mid.tracks.append(track)
+track0 = MidiTrack()
+mid.tracks.append(track0)
+
+track0.append(MetaMessage('track_name', name='test', time=0))
+track0.append(MetaMessage('time_signature', numerator=4,
+                      denominator=4, clocks_per_click=24, notated_32nd_notes_per_beat=8, time=0))
+track0.append(MetaMessage('set_tempo', tempo=120000, time=0))
+
+track1 = MidiTrack()
+mid.tracks.append(track1)
 
 # Dodanie informacji o instrumencie
-track.append(Message('program_change', program=0))
+track1.append(Message('program_change', program=0))
 
 current_notes = []
 previous_notes = []
 current_time = 0
 current_time_offset = 0
+counter = 0
 for notes in big_notes_result:
     notes = sorted(notes, key=lambda x: note_to_midi[x[1]])
     if current_time_offset >= quarter_note_length:
@@ -66,15 +75,16 @@ for notes in big_notes_result:
         note_name = note[1]
         current_notes.append(note_name)
         if note_name not in previous_notes:
-            track.append(Message('note_on', note=int(note_to_midi[note_name]), velocity=64, time=current_time))
-    print(f"current notes: {current_notes}, previous notes: {previous_notes}")
+            track1.append(Message('note_on', note=int(note_to_midi[note_name]), velocity=64, time=current_time))
+    print(f"counter: {counter}, current notes: {current_notes}, previous notes: {previous_notes}")
     print(f'offset: {current_time_offset}, current time: {current_time}')
     for note in previous_notes:
         if note not in current_notes:
-            track.append(Message('note_off', note=int(note_to_midi[note]), velocity=64, time=current_time))
+            track1.append(Message('note_off', note=int(note_to_midi[note]), velocity=64, time=current_time))
     current_time_offset += frame_length
     previous_notes = current_notes
     current_notes = []
+    counter += 1
 
 # pprint(mid)
 mid.save('result.mid')

@@ -9,15 +9,13 @@ import tqdm
 from concurrent.futures import ThreadPoolExecutor
 import pickle
 
-big_notes_result = []
-
 content_dir = os.path.join(os.getcwd(), "content")
 
 # Usunięcie katalogu "content" i jego zawartości
-shutil.rmtree(content_dir, ignore_errors=True)
+# shutil.rmtree(content_dir, ignore_errors=True)
 
 # Utworzenie nowego katalogu "content"
-os.makedirs(content_dir, exist_ok=True)
+# os.makedirs(content_dir, exist_ok=True)
 
 AUDIO_FILE = "sample 3 - piano (short sample).wav"
 
@@ -164,26 +162,11 @@ def process_frame(frame_number):
 with ThreadPoolExecutor(max_workers=8) as executor:
     results = list(tqdm.tqdm(executor.map(process_frame, range(FRAME_COUNT)), total=FRAME_COUNT))
 
-
 # Save the frames
-def save_frames(frames):
-    for frame_number, (fft, s) in frames:
-        fig = plot_fft(fft, xf, fs, s, RESOLUTION)
-        fig.write_image(os.path.join(content_dir, f"frame{frame_number}.png"), scale=2)
+# for frame_number, (fft, s) in enumerate(results):
+#     fig = plot_fft(fft, xf, fs, s, RESOLUTION)
+#     fig.write_image(os.path.join(content_dir, f"frame{frame_number}.png"), scale=2)
 
-
-# Group frames for parallel saving
-grouped_frames = []
-group = []
-for idx, result in enumerate(results):
-    group.append((idx, result))
-    if len(group) == FPS:  # assuming saving 1 second at once
-        grouped_frames.append(group)
-        group = []
-
-# Save frames in parallel
-with ThreadPoolExecutor(max_workers=len(grouped_frames)) as executor:
-    list(tqdm.tqdm(executor.map(save_frames, grouped_frames), total=len(grouped_frames)))
-
-with open('big_notes_result.pickle', 'wb') as file:
-    pickle.dump(big_notes_result, file)
+# Zapisywanie tablicy big_notes_result przy użyciu pickle
+with open('big_notes_result.pickle', 'wb') as f:
+    pickle.dump(big_notes_result, f)
