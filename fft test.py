@@ -6,6 +6,10 @@ import os
 import shutil
 import numpy as np
 import tqdm
+from concurrent.futures import ThreadPoolExecutor
+import pickle
+
+big_notes_result = []
 
 content_dir = os.path.join(os.getcwd(), "content")
 
@@ -38,6 +42,8 @@ audio = data.T[0]
 FRAME_STEP = (fs / FPS)
 FFT_WINDOW_SIZE = int(fs * FFT_WINDOW_SECONDS)
 AUDIO_LENGTH = len(audio) / fs
+
+note_recognition_threshold = 0.5
 
 
 def plot_fft(p, xf, fs, notes, dimensions=(960, 540)):
@@ -90,7 +96,7 @@ def find_top_notes(fft, num):
     lst = [x for x in enumerate(fft.real)]
     lst = sorted(lst, key=lambda x: x[1], reverse=True)
 
-    max_y = max(lst, key=lambda x: x[1])
+    max_y = max(x[1] for x in lst)
 
     idx = 0
     found = []
@@ -102,7 +108,7 @@ def find_top_notes(fft, num):
         n0 = int(round(n))
         name = note_name(n0)
 
-        if name not in found_note and y > :
+        if name not in found_note and y > note_recognition_threshold * max_y:
             found_note.add(name)
             s = [f, note_name(n0), y]
             found.append(s)
@@ -142,15 +148,42 @@ for frame_number in range(FRAME_COUNT):
 print(f"Max amplitude: {mx}")
 
 big_notes_result = []
-# Pass 2, produce the animation
-for frame_number in tqdm.tqdm(range(FRAME_COUNT)):
-    sample = extract_sample(audio, frame_number)
 
+
+# Function to process each frame in parallel
+def process_frame(frame_number):
+    sample = extract_sample(audio, frame_number)
     fft = np.fft.rfft(sample * window)
     fft = np.abs(fft) / mx
-
     s = find_top_notes(fft, TOP_NOTES)
     big_notes_result.append(s)
+    return fft.real, s
 
-    fig = plot_fft(fft.real, xf, fs, s, RESOLUTION)
-    fig.write_image(os.path.join(content_dir, f"frame{frame_number}.png"), scale=2)
+
+# Process frames in parallel
+with ThreadPoolExecutor(max_workers=8) as executor:
+    results = list(tqdm.tqdm(executor.map(process_frame, range(FRAME_COUNT)), total=FRAME_COUNT))
+
+
+# Save the frames
+def save_frames(frames):
+    for frame_number, (fft, s) in frames:
+        fig = plot_fft(fft, xf, fs, s, RESOLUTION)
+        fig.write_image(os.path.join(content_dir, f"frame{frame_number}.png"), scale=2)
+
+
+# Group frames for parallel saving
+grouped_frames = []
+group = []
+for idx, result in enumerate(results):
+    group.append((idx, result))
+    if len(group) == FPS:  # assuming saving 1 second at once
+        grouped_frames.append(group)
+        group = []
+
+# Save frames in parallel
+with ThreadPoolExecutor(max_workers=len(grouped_frames)) as executor:
+    list(tqdm.tqdm(executor.map(save_frames, grouped_frames), total=len(grouped_frames)))
+
+with open('big_notes_result.pickle', 'wb') as file:
+    pickle.dump(big_notes_result, file)
