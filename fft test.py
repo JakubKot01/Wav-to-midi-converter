@@ -90,6 +90,8 @@ def find_top_notes(fft, num):
     lst = [x for x in enumerate(fft.real)]
     lst = sorted(lst, key=lambda x: x[1], reverse=True)
 
+    max_y = max(lst, key=lambda x: x[1])
+
     idx = 0
     found = []
     found_note = set()
@@ -100,7 +102,7 @@ def find_top_notes(fft, num):
         n0 = int(round(n))
         name = note_name(n0)
 
-        if name not in found_note:
+        if name not in found_note and y > :
             found_note.add(name)
             s = [f, note_name(n0), y]
             found.append(s)
