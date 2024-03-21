@@ -6,14 +6,14 @@ from pprint import pprint
 
 # BPM = 84
 BPM = 76
-FPS = 30
+FPS = 32
 
 quarter_note_length = 60 / BPM
 sixteenth_note_length = quarter_note_length / 4
 
 frame_length = 1 / FPS
 
-ticks_per_quarter_note = 256
+ticks_per_quarter_note = 480
 
 ticks_per_frame = int((ticks_per_quarter_note * BPM) // (60 * frame_length))
 
@@ -40,7 +40,6 @@ def is_note_stable(note_name, counter: int):
             or note_name not in notes_names_table[counter + 2] \
             or note_name not in notes_names_table[counter + 3] \
             or note_name not in notes_names_table[counter + 4]:
-        print(note_name)
         notes_names_table[counter].remove(note_name)
         return False
     return True
@@ -93,23 +92,25 @@ current_time_offset = 0
 counter = 0
 
 for notes in notes_names_table:
+    print(f'Time: {current_time}', end="")
     for note in notes:
         if note not in previous_notes:
             if is_note_stable(note, counter):
-                track1.append(Message('note_on', note=int(note_to_midi[note]), velocity=64, time=current_time))
+                track1.append(Message('note_on', note=int(note_to_midi[note]), velocity=64, time=current_time_offset))
                 current_notes.append(note)
+                print(f', Note {note} activated', end='\t')
         else:
             current_notes.append(note)
-    print(f"counter: {counter}, current notes: {current_notes}, previous notes: {previous_notes}")
-    print(f'offset: {current_time_offset}, current time: {current_time}')
+    # print(f"\ncounter: {counter}, current notes: {current_notes}, previous notes: {previous_notes}")
     for note in previous_notes:
         if note not in current_notes:
-            track1.append(Message('note_off', note=int(note_to_midi[note]), velocity=64, time=current_time))
+            track1.append(Message('note_off', note=int(note_to_midi[note]), velocity=64, time=current_time_offset))
+            print(f', Note {note} deactivated', end='\t')
     current_time += 1
     previous_notes = current_notes
     current_notes = []
     counter += 1
-    print(current_time)
+    print("\n")
 
 # pprint(mid)
 mid.save('result.mid')
