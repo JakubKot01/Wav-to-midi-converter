@@ -1,10 +1,11 @@
 import pickle
 from mido import MetaMessage, Message, MidiFile, MidiTrack
 from pprint import pprint
-#Music21
+
+# Music21
 
 # BPM = 84
-BPM = 120
+BPM = 76
 FPS = 30
 
 quarter_note_length = 60 / BPM
@@ -14,12 +15,36 @@ frame_length = 1 / FPS
 
 ticks_per_quarter_note = 256
 
+ticks_per_frame = int((ticks_per_quarter_note * BPM) // (60 * frame_length))
+
 # Odczytaj tablicę z pliku
 with open('big_notes_result.pickle', 'rb') as file:
     big_notes_result = pickle.load(file)
 
-pprint(big_notes_result)
-pprint(len(big_notes_result))
+notes_names_table = []
+
+for notes in big_notes_result:
+    current_notes = []
+    for note in notes:
+        current_notes.append(note[1])
+    notes_names_table.append(current_notes)
+
+pprint(notes_names_table)
+pprint(len(notes_names_table))
+
+
+def is_note_stable(note_name, counter: int):
+    if len(notes_names_table) - counter < 5:
+        return True
+    if note_name not in notes_names_table[counter + 1] \
+            or note_name not in notes_names_table[counter + 2] \
+            or note_name not in notes_names_table[counter + 3] \
+            or note_name not in notes_names_table[counter + 4]:
+        print(note_name)
+        notes_names_table[counter].remove(note_name)
+        return False
+    return True
+
 
 note_to_midi = {
     "C0": 12, "C#0": 13, "Db0": 13, "D0": 14, "D#0": 15, "Eb0": 15, "E0": 16, "F0": 17,
@@ -45,15 +70,15 @@ note_to_midi = {
     "F9": 125, "F#9": 126, "Gb9": 126, "G9": 127
 }
 
-
 mid = MidiFile()
 track0 = MidiTrack()
 mid.tracks.append(track0)
 
-track0.append(MetaMessage('track_name', name='test', time=0))
-track0.append(MetaMessage('time_signature', numerator=4,
-                      denominator=4, clocks_per_click=24, notated_32nd_notes_per_beat=8, time=0))
-track0.append(MetaMessage('set_tempo', tempo=120000, time=0))
+# track0.append(MetaMessage('track_name', name='test', time=0))
+# track0.append(MetaMessage('time_signature', numerator=4,
+#                               denominator=4, clocks_per_click=24, notated_32nd_notes_per_beat=8, time=0))
+
+mid.ticks_per_beat = ticks_per_quarter_note
 
 track1 = MidiTrack()
 mid.tracks.append(track1)
@@ -66,27 +91,33 @@ previous_notes = []
 current_time = 0
 current_time_offset = 0
 counter = 0
-for notes in big_notes_result:
-    notes = sorted(notes, key=lambda x: note_to_midi[x[1]])
-    if current_time_offset >= quarter_note_length:
-        current_time += ticks_per_quarter_note
-        current_time_offset = 0
+
+for notes in notes_names_table:
     for note in notes:
-        note_name = note[1]
-        current_notes.append(note_name)
-        if note_name not in previous_notes:
-            track1.append(Message('note_on', note=int(note_to_midi[note_name]), velocity=64, time=current_time))
+        if note not in previous_notes:
+            if is_note_stable(note, counter):
+                track1.append(Message('note_on', note=int(note_to_midi[note]), velocity=64, time=current_time))
+                current_notes.append(note)
+        else:
+            current_notes.append(note)
     print(f"counter: {counter}, current notes: {current_notes}, previous notes: {previous_notes}")
     print(f'offset: {current_time_offset}, current time: {current_time}')
     for note in previous_notes:
         if note not in current_notes:
             track1.append(Message('note_off', note=int(note_to_midi[note]), velocity=64, time=current_time))
-    current_time_offset += frame_length
+    current_time += 1
     previous_notes = current_notes
     current_notes = []
     counter += 1
+    print(current_time)
 
 # pprint(mid)
 mid.save('result.mid')
 
 print(frame_length)
+
+
+"""
+TODO:
+1. Sprawdzać czy dźwięk zniknął czy zmieniła się oktawa
+"""
