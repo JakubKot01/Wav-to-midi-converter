@@ -15,7 +15,8 @@ frame_length = 1 / FPS
 
 ticks_per_quarter_note = 480
 
-ticks_per_frame = int((ticks_per_quarter_note * BPM) // (60 * frame_length))
+ticks_per_frame = int((ticks_per_quarter_note * BPM) // (60 * FPS))
+print(f'ticks per frame: {ticks_per_frame}\n')
 
 # Odczytaj tablicę z pliku
 with open('big_notes_result.pickle', 'rb') as file:
@@ -106,7 +107,7 @@ for notes in notes_names_table:
         if note not in current_notes:
             track1.append(Message('note_off', note=int(note_to_midi[note]), velocity=64, time=current_time_offset))
             print(f', Note {note} deactivated', end='\t')
-    current_time += 1
+    current_time_offset += ticks_per_frame
     previous_notes = current_notes
     current_notes = []
     counter += 1
