@@ -12,15 +12,15 @@ import pickle
 content_dir = os.path.join(os.getcwd(), "content")
 
 # Usunięcie katalogu "content" i jego zawartości
-# shutil.rmtree(content_dir, ignore_errors=True)
+shutil.rmtree(content_dir, ignore_errors=True)
 
 # Utworzenie nowego katalogu "content"
-# os.makedirs(content_dir, exist_ok=True)
+os.makedirs(content_dir, exist_ok=True)
 
 AUDIO_FILE = "sample 4 - piano (short sample).wav"
 
 # Configuration
-FPS = 32
+FPS = 60
 FFT_WINDOW_SECONDS = 1  # how many seconds of audio make up an FFT window
 
 # Note range to display
@@ -163,9 +163,9 @@ with ThreadPoolExecutor(max_workers=8) as executor:
     results = list(tqdm.tqdm(executor.map(process_frame, range(FRAME_COUNT)), total=FRAME_COUNT))
 
 # Save the frames
-# for frame_number, (fft, s) in enumerate(results):
-#     fig = plot_fft(fft, xf, fs, s, RESOLUTION)
-#     fig.write_image(os.path.join(content_dir, f"frame{frame_number}.png"), scale=2)
+for frame_number, (fft, s) in enumerate(results):
+    fig = plot_fft(fft, xf, fs, s, RESOLUTION)
+    fig.write_image(os.path.join(content_dir, f"frame{frame_number}.png"), scale=2)
 
 # Zapisywanie tablicy big_notes_result przy użyciu pickle
 with open('big_notes_result.pickle', 'wb') as f:

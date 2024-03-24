@@ -1,22 +1,23 @@
 import pickle
 from mido import MetaMessage, Message, MidiFile, MidiTrack
 from pprint import pprint
+import numpy as np
 
 # Music21
 
 # BPM = 84
-BPM = 76
-FPS = 32
+tempo = 500000
+FPS = 60
 
-quarter_note_length = 60 / BPM
-sixteenth_note_length = quarter_note_length / 4
+# quarter_note_length = 60 / BPM
+# sixteenth_note_length = quarter_note_length / 4
 
-frame_length = 1 / FPS
+frame_length = 1000 // FPS
 
 ticks_per_quarter_note = 480
 
-ticks_per_frame = int((ticks_per_quarter_note * BPM) // (60 * FPS))
-print(f'ticks per frame: {ticks_per_frame}\n')
+# ticks_per_frame = int((ticks_per_quarter_note * BPM) // (60 * FPS))
+# print(f'ticks per frame: {ticks_per_frame}\n')
 
 # Odczytaj tablicę z pliku
 with open('big_notes_result.pickle', 'rb') as file:
@@ -35,12 +36,11 @@ pprint(len(notes_names_table))
 
 
 def is_note_stable(note_name, counter: int):
-    if len(notes_names_table) - counter < 5:
+    if len(notes_names_table) - counter < 4:
         return True
     if note_name not in notes_names_table[counter + 1] \
             or note_name not in notes_names_table[counter + 2] \
-            or note_name not in notes_names_table[counter + 3] \
-            or note_name not in notes_names_table[counter + 4]:
+            or note_name not in notes_names_table[counter + 3]:
         notes_names_table[counter].remove(note_name)
         return False
     return True
@@ -77,6 +77,7 @@ mid.tracks.append(track0)
 # track0.append(MetaMessage('track_name', name='test', time=0))
 # track0.append(MetaMessage('time_signature', numerator=4,
 #                               denominator=4, clocks_per_click=24, notated_32nd_notes_per_beat=8, time=0))
+track0.append(MetaMessage('set_tempo', tempo=tempo))
 
 mid.ticks_per_beat = ticks_per_quarter_note
 
@@ -89,29 +90,51 @@ track1.append(Message('program_change', program=0))
 current_notes = []
 previous_notes = []
 current_time = 0
-current_time_offset = 0
 counter = 0
+
+active_notes = {}
 
 for notes in notes_names_table:
     print(f'Time: {current_time}', end="")
     for note in notes:
         if note not in previous_notes:
             if is_note_stable(note, counter):
-                track1.append(Message('note_on', note=int(note_to_midi[note]), velocity=64, time=current_time_offset))
+                track1.append(Message('note_on',
+                                      note=int(note_to_midi[note]),
+                                      velocity=64,
+                                      time=int(np.floor(current_time * tempo / 1000000))))
                 current_notes.append(note)
+                active_notes[note] = current_time
                 print(f', Note {note} activated', end='\t')
+            # track1.append(Message('note_on',
+            #                       note=int(note_to_midi[note]),
+            #                       velocity=64,
+            #                       time=int(current_time * tempo // 1000000)))
+            # current_notes.append(note)
+            # active_notes[note] = current_time
+            # print(f', Note {note} activated', end='\t')
         else:
             current_notes.append(note)
     # print(f"\ncounter: {counter}, current notes: {current_notes}, previous notes: {previous_notes}")
     for note in previous_notes:
         if note not in current_notes:
-            track1.append(Message('note_off', note=int(note_to_midi[note]), velocity=64, time=current_time_offset))
+            track1.append(Message('note_off',
+                                  note=int(note_to_midi[note]),
+                                  velocity=64,
+                                  time=int(np.ceil((current_time - active_notes[note]) * tempo / 1000000))))
+            del active_notes[note]
             print(f', Note {note} deactivated', end='\t')
-    current_time_offset += ticks_per_frame
+    current_time += frame_length
     previous_notes = current_notes
     current_notes = []
     counter += 1
     print("\n")
+
+for note in active_notes:
+    track1.append(Message('note_off',
+                          note=int(note_to_midi[note]),
+                          velocity=64,
+                          time=int((current_time - active_notes[note]) * tempo // 1000000)))
 
 # pprint(mid)
 mid.save('result.mid')
