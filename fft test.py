@@ -20,7 +20,7 @@ os.makedirs(content_dir, exist_ok=True)
 AUDIO_FILE = "sample 4 - piano (short sample).wav"
 
 # Configuration
-FPS = 60
+FPS = 30
 FFT_WINDOW_SECONDS = 1  # how many seconds of audio make up an FFT window
 
 # Note range to display
