@@ -9,7 +9,7 @@ import tqdm
 from concurrent.futures import ThreadPoolExecutor
 import pickle
 
-content_dir = os.path.join(os.getcwd(), "content")
+content_dir = os.path.join(os.getcwd(), "content2")
 
 # Usunięcie katalogu "content" i jego zawartości
 shutil.rmtree(content_dir, ignore_errors=True)
@@ -20,7 +20,7 @@ os.makedirs(content_dir, exist_ok=True)
 AUDIO_FILE = "sample 4 - piano (short sample).wav"
 
 # Configuration
-FPS = 30
+FPS = 50
 FFT_WINDOW_SECONDS = 1  # how many seconds of audio make up an FFT window
 
 # Note range to display
@@ -41,7 +41,7 @@ FRAME_STEP = (fs / FPS)
 FFT_WINDOW_SIZE = int(fs * FFT_WINDOW_SECONDS)
 AUDIO_LENGTH = len(audio) / fs
 
-note_recognition_threshold = 0.5
+note_recognition_threshold = 0.4
 
 
 def plot_fft(p, xf, fs, notes, dimensions=(960, 540)):
@@ -168,5 +168,5 @@ for frame_number, (fft, s) in enumerate(results):
     fig.write_image(os.path.join(content_dir, f"frame{frame_number}.png"), scale=2)
 
 # Zapisywanie tablicy big_notes_result przy użyciu pickle
-with open('big_notes_result.pickle', 'wb') as f:
+with open('big_notes_result2.pickle', 'wb') as f:
     pickle.dump(big_notes_result, f)

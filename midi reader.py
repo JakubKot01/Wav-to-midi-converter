@@ -16,8 +16,8 @@ def print_midi_file_contents(midi_file_path):
 
 
 # Ścieżka do pliku MIDI
-midi_file_path = "canon in D - test.mid"
-# midi_file_path = "result.mid"
+#midi_file_path = "canon in D - test.mid"
+midi_file_path = "result.mid"
 # midi_file_path = "oneNote.mid"
 # midi_file_path = "twoNotes.mid"
 # midi_file_path = "doubleNote.mid"
