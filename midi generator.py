@@ -1,17 +1,21 @@
 import pickle
 from mido import MetaMessage, Message, MidiFile, MidiTrack
+import mido
 import numpy as np
 from pprint import pprint
 
-tempo = 100000
+FILTER_VERBOSE = False
+
+tempo = 80
 FPS = 50
 
-frame_length = tempo / FPS
-
-ticks_per_quarter_note = 960
+# frame_length = ((1 / FPS) * 5) / 6
+frame_length = (1 / FPS)
+print(f'Frame length: {frame_length}')
+# ticks_per_quarter_note = 960
 
 # with open('big_notes_result_test.pickle', 'rb') as file:
-with open('big_notes_result2.pickle', 'rb') as file:
+with open('big_notes_result_test_cello.pickle', 'rb') as file:
     big_notes_result = pickle.load(file)
 
 notes_names_table = []
@@ -56,26 +60,26 @@ tons_sounds_counters = {
     "H-moll": 0.0
 }
 
-main_counter = 0
 
-pprint(notes_volumes_table)
+def is_note_stable(note_name, counter):
+    if len(notes_names_table) - counter < 10:
+        return True
 
-for notes in notes_names_table:
-    counter = 0
-    for note in notes:
-        for ton in moll_tons:
-            if note[:-1] in moll_tons[ton]:
-                tons_sounds_counters[ton] += 1 * notes_volumes_table[main_counter][counter]
-        counter += 1
-    main_counter += 1
+    if note_name not in notes_names_table[counter + 1] \
+            or note_name not in notes_names_table[counter + 2] \
+            or note_name not in notes_names_table[counter + 3] \
+            or note_name not in notes_names_table[counter + 4] \
+            or note_name not in notes_names_table[counter + 5] \
+            or note_name not in notes_names_table[counter + 6] \
+            or note_name not in notes_names_table[counter + 7] \
+            or note_name not in notes_names_table[counter + 8] \
+            or note_name not in notes_names_table[counter + 9]:
+        notes_names_table[counter].remove(note_name)
+        return False
+    return True
 
-print(tons_sounds_counters)
 
-found_ton = max(tons_sounds_counters, key=tons_sounds_counters.get)
-print(found_ton)
-
-
-def is_note_stable(note_name, counter, active_notes):
+def are_note_properties_ok(note_name, counter, active_notes):
     # Czy nuta jest w tonacji?
     # if note_name[:-1] not in moll_tons[found_ton]:
     #    return False
@@ -85,20 +89,9 @@ def is_note_stable(note_name, counter, active_notes):
                 or note_to_midi[note_name] == note_to_midi[note] - 1:
             return False
 
-    # Czy nuta jest stabilna?
-    if len(notes_names_table) - counter < 8:
+    if is_note_stable(note_name, counter):
         return True
-
-    if note_name not in notes_names_table[counter + 1] \
-            or note_name not in notes_names_table[counter + 2] \
-            or note_name not in notes_names_table[counter + 3] \
-            or note_name not in notes_names_table[counter + 4] \
-            or note_name not in notes_names_table[counter + 5] \
-            or note_name not in notes_names_table[counter + 6] \
-            or note_name not in notes_names_table[counter + 7]:
-        notes_names_table[counter].remove(note_name)
-        return False
-    return True
+    return False
 
 
 def is_going_to_be_replaced(note, counter):
@@ -141,32 +134,95 @@ track0 = MidiTrack()
 mid.tracks.append(track0)
 # track0.append(MetaMessage('set_tempo', tempo=tempo))
 
-mid.ticks_per_beat = ticks_per_quarter_note
+# mid.ticks_per_beat = ticks_per_quarter_note
 
 # track1.append(Message('program_change', program=0))  # Change instrument to piano (program number 0)
+
+current_time = 0
+
+current_notes = []
+previous_notes = []
+
+# Obliczanie liczby tików na milisekundę
+# ticks_per_millisecond = ticks_per_quarter_note / tempo
+
+# Filtering
+
+for counter, notes in enumerate(notes_names_table):
+    for note_number, note in enumerate(notes):
+        if is_note_stable(note, counter):
+            current_notes.append(note)
+        else:
+            if counter < len(big_notes_result):
+                if FILTER_VERBOSE:
+                    print(f'\ncounter: {counter}, notes: {big_notes_result[counter]}')
+                if note_number < len(big_notes_result[counter]):
+                    if FILTER_VERBOSE:
+                        print(f'Note counter: {note_number}, note: {big_notes_result[counter][note_number]}')
+                    del big_notes_result[counter][note_number]
+                else:
+                    if FILTER_VERBOSE:
+                        print(f'Note counter: {note_number} INDEX OUT OF RANGE')
+            else:
+                if FILTER_VERBOSE:
+                    print(f'\nCounter: {counter} INDEX OUT OF RANGE')
+
+    previous_notes = current_notes.copy()
+    current_notes.clear()
+
+# Creating midi file
+
+notes_names_table = []
+notes_volumes_table = []
+
+for notes in big_notes_result:
+    current_notes = []
+    current_volumes = []
+    for note in notes:
+        current_notes.append(note[1])
+        current_volumes.append(note[2])
+    notes_names_table.append(current_notes)
+    notes_volumes_table.append(current_volumes)
+
+active_notes = {}
+
+for counter, notes in enumerate(notes_names_table):
+    for note_number, note in enumerate(notes):
+        for ton in moll_tons:
+            if note[:-1] in moll_tons[ton]:
+                if note[:-1] in active_notes:
+                    del active_notes[note[:-1]]
+                else:
+                    print(f'note: {note} counted for tone: {ton}')
+                    tons_sounds_counters[ton] += notes_volumes_table[counter][note_number]
+                    active_notes[note[:-1]] = 1
+
+found_ton = max(tons_sounds_counters, key=tons_sounds_counters.get)
+
+pprint(tons_sounds_counters)
+print(f'found tone: {found_ton}')
 
 current_notes = []
 previous_notes = []
 current_time = 0
 counter = 0
+last_message_time = 0
 
 active_notes = {}
 
-# Obliczanie liczby tików na milisekundę
-ticks_per_millisecond = ticks_per_quarter_note / tempo
-
-for notes in notes_names_table:
-    tick_duration = int(np.round(current_time * ticks_per_millisecond))
-    for note in notes:
+for counter, notes in enumerate(notes_names_table):
+    delay_ticks = mido.second2tick(current_time - last_message_time, mid.ticks_per_beat, mido.bpm2tempo(tempo))
+    for note_number, note in enumerate(notes):
         if note not in previous_notes:
-            if is_note_stable(note, counter, active_notes):
+            if are_note_properties_ok(note, counter, active_notes):
                 track0.append(Message('note_on',
                                       note=int(note_to_midi[note]),
                                       velocity=64,
-                                      time=tick_duration))
+                                      time=delay_ticks))
                 print(f'Note {note} activated from frame No. {counter} at time {current_time}')
                 current_notes.append(note)
                 active_notes[note] = current_time
+                last_message_time = current_time
         else:
             current_notes.append(note)
 
@@ -176,14 +232,14 @@ for notes in notes_names_table:
             track0.append(Message('note_off',
                                   note=int(note_to_midi[note]),
                                   velocity=0,
-                                  time=tick_duration))
+                                  time=delay_ticks))
             print(f'Note {note} deactivated from frame No. {counter} at time {current_time}')
             del active_notes[note]
+            last_message_time = current_time
 
-    current_time += frame_length / 2
+    current_time += frame_length
     previous_notes = current_notes.copy()
     current_notes.clear()
-    counter += 1
 
-#mid.save('result_test.mid')
-mid.save('result2.mid')
+mid.save('result_test_cello.mid')
+# mid.save('result2.mid')

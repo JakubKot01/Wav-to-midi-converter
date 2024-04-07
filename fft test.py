@@ -9,7 +9,7 @@ import tqdm
 from concurrent.futures import ThreadPoolExecutor
 import pickle
 
-content_dir = os.path.join(os.getcwd(), "content2")
+content_dir = os.path.join(os.getcwd(), "content_test_cello")
 
 # Usunięcie katalogu "content" i jego zawartości
 shutil.rmtree(content_dir, ignore_errors=True)
@@ -17,17 +17,17 @@ shutil.rmtree(content_dir, ignore_errors=True)
 # Utworzenie nowego katalogu "content"
 os.makedirs(content_dir, exist_ok=True)
 
-AUDIO_FILE = "sample 4 - piano (short sample).wav"
+AUDIO_FILE = "test_cello.wav"
 
 # Configuration
 FPS = 50
-FFT_WINDOW_SECONDS = 1  # how many seconds of audio make up an FFT window
+FFT_WINDOW_SECONDS = 0.25  # how many seconds of audio make up an FFT window
 
 # Note range to display
 FREQ_MIN = 10
 FREQ_MAX = 1000
 
-TOP_NOTES = 4
+# TOP_NOTES = 4
 
 NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
@@ -87,7 +87,7 @@ def extract_sample(audio, frame_number):
         return audio[begin:end]
 
 
-def find_top_notes(fft, num):
+def find_top_notes(fft):
     if np.max(fft.real) < 0.001:
         return []
 
@@ -153,7 +153,7 @@ def process_frame(frame_number):
     sample = extract_sample(audio, frame_number)
     fft = np.fft.rfft(sample * window)
     fft = np.abs(fft) / mx
-    s = find_top_notes(fft, TOP_NOTES)
+    s = find_top_notes(fft)
     big_notes_result.append(s)
     return fft.real, s
 
@@ -168,5 +168,5 @@ for frame_number, (fft, s) in enumerate(results):
     fig.write_image(os.path.join(content_dir, f"frame{frame_number}.png"), scale=2)
 
 # Zapisywanie tablicy big_notes_result przy użyciu pickle
-with open('big_notes_result2.pickle', 'wb') as f:
+with open('big_notes_result_test_cello.pickle', 'wb') as f:
     pickle.dump(big_notes_result, f)
