@@ -15,7 +15,7 @@ print(f'Frame length: {frame_length}')
 # ticks_per_quarter_note = 960
 
 # with open('big_notes_result_test.pickle', 'rb') as file:
-with open('big_notes_result_test_cello.pickle', 'rb') as file:
+with open('dramatic_piano_sample.pickle', 'rb') as file:
     big_notes_result = pickle.load(file)
 
 notes_names_table = []
@@ -241,5 +241,5 @@ for counter, notes in enumerate(notes_names_table):
     previous_notes = current_notes.copy()
     current_notes.clear()
 
-mid.save('result_test_cello.mid')
+mid.save('dramatic_piano_sample.mid')
 # mid.save('result2.mid')
