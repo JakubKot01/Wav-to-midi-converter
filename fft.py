@@ -41,7 +41,7 @@ FRAME_STEP = (fs / FPS)
 FFT_WINDOW_SIZE = int(fs * FFT_WINDOW_SECONDS)
 AUDIO_LENGTH = len(audio) / fs
 
-note_recognition_threshold = 0.2
+note_recognition_threshold = 0.3
 
 
 def plot_fft(p, xf, fs, notes, dimensions=(960, 540)):

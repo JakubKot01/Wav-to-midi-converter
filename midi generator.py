@@ -60,29 +60,23 @@ tons_sounds_counters = {
     "H-moll": 0.0
 }
 
+# TODO: Sprawdzić czy głośność narasta czy maleje
 
 def is_note_stable(note_name, counter):
-    if len(notes_names_table) - counter < 10:
+    if len(notes_names_table) - counter < 4:
         return True
 
     if note_name not in notes_names_table[counter + 1] \
             or note_name not in notes_names_table[counter + 2] \
-            or note_name not in notes_names_table[counter + 3] \
-            or note_name not in notes_names_table[counter + 4] \
-            or note_name not in notes_names_table[counter + 5] \
-            or note_name not in notes_names_table[counter + 6] \
-            or note_name not in notes_names_table[counter + 7] \
-            or note_name not in notes_names_table[counter + 8] \
-            or note_name not in notes_names_table[counter + 9]:
-        notes_names_table[counter].remove(note_name)
+            or note_name not in notes_names_table[counter + 3]:
         return False
     return True
 
 
 def are_note_properties_ok(note_name, counter, active_notes):
     # Czy nuta jest w tonacji?
-    # if note_name[:-1] not in moll_tons[found_ton]:
-    #    return False
+    if note_name[:-1] not in moll_tons[found_ton]:
+        return False
     # Czy nuta jest przesunięta o jeden półton?
     for note in active_notes:
         if note_to_midi[note_name] == note_to_midi[note] + 1 \
@@ -196,6 +190,8 @@ for counter, notes in enumerate(notes_names_table):
                     print(f'note: {note} counted for tone: {ton}')
                     tons_sounds_counters[ton] += notes_volumes_table[counter][note_number]
                     active_notes[note[:-1]] = 1
+            else:
+                tons_sounds_counters[ton] -= notes_volumes_table[counter][note_number]
 
 found_ton = max(tons_sounds_counters, key=tons_sounds_counters.get)
 
