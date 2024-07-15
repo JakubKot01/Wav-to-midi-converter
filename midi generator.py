@@ -9,13 +9,12 @@ FILTER_VERBOSE = False
 tempo = 80
 FPS = 50
 
-# frame_length = ((1 / FPS) * 5) / 6
 frame_length = (1 / FPS)
 print(f'Frame length: {frame_length}')
 # ticks_per_quarter_note = 960
 
 # with open('big_notes_result_test.pickle', 'rb') as file:
-with open('dramatic_piano_sample.pickle', 'rb') as file:
+with open('lo-fi_piano_sample.pickle', 'rb') as file:
     big_notes_result = pickle.load(file)
 
 notes_names_table = []
@@ -75,8 +74,8 @@ def is_note_stable(note_name, counter):
 
 def are_note_properties_ok(note_name, counter, active_notes):
     # Czy nuta jest w tonacji?
-    if note_name[:-1] not in moll_tons[found_ton]:
-        return False
+    # if note_name[:-1] not in moll_tons[found_ton]:
+    #    return False
     # Czy nuta jest przesunięta o jeden półton?
     for note in active_notes:
         if note_to_midi[note_name] == note_to_midi[note] + 1 \
@@ -237,5 +236,5 @@ for counter, notes in enumerate(notes_names_table):
     previous_notes = current_notes.copy()
     current_notes.clear()
 
-mid.save('dramatic_piano_sample.mid')
+mid.save('lo-fi_piano_sample.mid')
 # mid.save('result2.mid')
