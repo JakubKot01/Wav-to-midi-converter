@@ -17,7 +17,7 @@ shutil.rmtree(content_dir, ignore_errors=True)
 # Utworzenie nowego katalogu "content"
 os.makedirs(content_dir, exist_ok=True)
 
-AUDIO_FILE = "full-loud-glide-piano-dramatic-loop_140bpm_G_minor.wav"
+AUDIO_FILE = "dramatic piano sample.wav"
 
 # Configuration
 FPS = 50
