@@ -8,15 +8,15 @@ import tqdm
 import pickle
 
 # Konfiguracja
-AUDIO_FILE = "dramatic piano sample.wav"
+AUDIO_FILE = "dramatic piano - synthetic sample.wav"
 FPS = 50
-FFT_WINDOW_SECONDS = 0.8  # ile sekund audio składa się na okno FFT
+FFT_WINDOW_SECONDS = [0.1, 0.2, 0.4, 0.6, 0.8]  # ile sekund audio składa się na okno FFT
 FREQ_MIN = 10
 FREQ_MAX = 1000
 NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 RESOLUTION = (1920, 1080)
 SCALE = 1  # 0.5=QHD(960x540), 1=HD(1920x1080), 2=4K(3840x2160)
-NOTE_RECOGNITION_THRESHOLD = 0.1
+NOTE_RECOGNITION_THRESHOLD = 0.4
 CONTENT_DIR = os.path.join(os.getcwd(), "dramatic_piano_sample")
 
 
@@ -45,15 +45,15 @@ def find_top_notes(fft, xf, note_recognition_threshold):
     found_note_set = set()
 
     for idx, value in lst:
-        f = xf[idx]
+        frequency = xf[idx]
         y = value
-        n = freq_to_number(f)
+        n = freq_to_number(frequency)
         n0 = int(round(n))
         name = note_name(n0)
 
         if name not in found_note_set and y > note_recognition_threshold * max_y:
             found_note_set.add(name)
-            found_notes.append([f, name, y])
+            found_notes.append([frequency, name, y])
 
     return found_notes
 
@@ -104,43 +104,70 @@ def plot_fft(p, xf, notes, dimensions=(960, 540)):
 # Główna funkcja przetwarzania audio
 def process_audio():
     prepare_directory(CONTENT_DIR)
+    agents_notes_results = [[] for _ in FFT_WINDOW_SECONDS]
+    big_notes_result = []
 
-    # Odczyt pliku audio
     fs, data = wavfile.read(AUDIO_FILE)
     audio = data.T[0]
-    frame_step = (fs / FPS)
-    fft_window_size = int(fs * FFT_WINDOW_SECONDS)
     audio_length = len(audio) / fs
     frame_count = int(audio_length * FPS)
 
-    # Sprawdzenie typu danych i zakresu wartości
-    print(f"Audio data type: {audio.dtype}")
-    print(f"Sample values (first 10 samples): {audio[:10]}")
+    for index, agent in enumerate(FFT_WINDOW_SECONDS):
+        current_notes_result = []
+        # Odczyt pliku audio
+        frame_step = (fs / FPS)
+        fft_window_size = int(fs * agent)
 
-    # Okno FFT i częstotliwości
-    window = 0.5 * (1 - np.cos(np.linspace(0, 2 * np.pi, fft_window_size, False)))
-    window /= np.sum(window)  # Normalizacja okna
-    xf = np.fft.rfftfreq(fft_window_size, 1 / fs)
+        # Sprawdzenie typu danych i zakresu wartości
+        print(f"Audio data type: {audio.dtype}")
+        print(f"Sample values (first 10 samples): {audio[:10]}")
 
-    big_notes_result = []
-    results = []
+        # Okno FFT i częstotliwości
+        window = 0.5 * (1 - np.cos(np.linspace(0, 2 * np.pi, fft_window_size, False)))
+        window /= np.sum(window)  # Normalizacja okna
+        xf = np.fft.rfftfreq(fft_window_size, 1 / fs)
 
-    # Przetwarzanie każdej ramki
-    frame_positions = np.linspace(0, len(audio) - fft_window_size, frame_count, endpoint=False, dtype=int)
-    for frame_position in tqdm.tqdm(frame_positions):
-        sample = extract_sample(audio, frame_position, fft_window_size).astype(np.float64)
-        sample *= window
-        fft = np.fft.rfft(sample)
-        top_notes = find_top_notes(fft, xf, NOTE_RECOGNITION_THRESHOLD)
-        big_notes_result.append(top_notes)
-        results.append((fft, top_notes))
+        # results = []
 
-    # Zapisanie wykresów
-    # for frame_number, (fft, notes) in enumerate(results):
-    #     fig = plot_fft(fft.real, xf, notes, RESOLUTION)
-    #     fig.write_image(os.path.join(CONTENT_DIR, f"frame{frame_number}.png"), scale=2)
+        # Przetwarzanie każdej ramki
+        frame_positions = np.linspace(0, len(audio) - fft_window_size, frame_count, endpoint=False, dtype=int)
+        for frame_position in tqdm.tqdm(frame_positions):
+            sample = extract_sample(audio, frame_position, fft_window_size).astype(np.float64)
+            sample *= window
+            fft = np.fft.rfft(sample)
+            top_notes = find_top_notes(fft, xf, NOTE_RECOGNITION_THRESHOLD)
+            current_notes_result.append(top_notes)
 
-    # Zapisanie wyników przy użyciu pickle
+        agents_notes_results[index] = current_notes_result.copy()
+
+    for frame_index in range(frame_count):
+        frame_notes = []
+        frame_result = []
+        for agent_notes_result in agents_notes_results:
+            for note in agent_notes_result[frame_index]:
+                if note not in frame_notes:
+                    frame_notes.append(note)
+
+        for frame_note in frame_notes:
+            counter = 0
+            for agent_notes_result in agents_notes_results:
+                for note in agent_notes_result[frame_index]:
+                    print(f'note: {note}')
+                    if frame_note[1] == note[1]:
+                        counter += 1
+            if counter >= 3:
+                frame_result.append(frame_note)
+
+        print(frame_result)
+        big_notes_result.append(frame_result)
+        # results.append((fft, top_notes))
+
+        # Zapisanie wykresów
+        # for frame_number, (fft, notes) in enumerate(results):
+        #     fig = plot_fft(fft.real, xf, notes, RESOLUTION)
+        #     fig.write_image(os.path.join(CONTENT_DIR, f"frame{frame_number}.png"), scale=2)
+
+        # Zapisanie wyników przy użyciu pickle
     with open('dramatic_piano_sample.pickle', 'wb') as f:
         pickle.dump(big_notes_result, f)
 

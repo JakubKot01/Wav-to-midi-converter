@@ -1,6 +1,8 @@
 import pickle
-from mido import Message, MidiFile, MidiTrack
+from mido import MetaMessage, Message, MidiFile, MidiTrack
 import mido
+import numpy as np
+from pprint import pprint
 
 FILTER_VERBOSE = False
 
@@ -69,6 +71,7 @@ tons_sounds_counters = {
     "H-moll": 0.0
 }
 
+
 # TODO: Sprawdzić czy głośność narasta czy maleje
 
 def is_note_stable(note_name, counter):
@@ -80,6 +83,7 @@ def is_note_stable(note_name, counter):
             or note_name not in notes_names_table[counter + 3]:
         return False
     return True
+
 
 def are_note_properties_ok(note_name, counter, active_notes):
     # Czy nuta jest w tonacji?
@@ -108,6 +112,7 @@ def is_going_to_be_replaced(note, counter):
                 return False
     return True
 
+
 mid = MidiFile(type=0)
 track0 = MidiTrack()
 mid.tracks.append(track0)
@@ -120,7 +125,7 @@ previous_notes = []
 # Filtering
 
 notes_names_table = []
-notes_volumes_progress_table = []
+notes_volumes_table = []
 
 for notes in big_notes_result:
     current_notes = []
@@ -128,39 +133,53 @@ for notes in big_notes_result:
     for note in notes:
         if note[1] in note_to_midi:
             current_notes.append(note[1])
-            current_volumes.append([note[1], note[2]])
+            current_volumes.append(note[2])
     notes_names_table.append(current_notes)
-    notes_volumes_progress_table.append(current_volumes)
+    notes_volumes_table.append(current_volumes)
 
-global_max_volume = 0.0
-for notes_volumes in notes_volumes_progress_table:
-    for note in notes_volumes:
-        if note[1] > global_max_volume:
-            global_max_volume = note[1]
+for notes_volume in notes_volumes_table:
 
-notes_volumes_table = []
+# for counter, notes in enumerate(notes_names_table):
+#     for note_number, note in enumerate(notes):
+#         if is_note_stable(note, counter):
+#             current_notes.append(note)
+#         else:
+#             if counter < len(big_notes_result):
+#                 if FILTER_VERBOSE:
+#                     print(f'\ncounter: {counter}, notes: {big_notes_result[counter]}')
+#                 if note_number < len(big_notes_result[counter]):
+#                     if FILTER_VERBOSE:
+#                         print(f'Note counter: {note_number}, note: {big_notes_result[counter][note_number]}')
+#                     del big_notes_result[counter][note_number]
+#                 else:
+#                     if FILTER_VERBOSE:
+#                         print(f'Note counter: {note_number} INDEX OUT OF RANGE')
+#             else:
+#                 if FILTER_VERBOSE:
+#                     print(f'\nCounter: {counter} INDEX OUT OF RANGE')
+#
+#     previous_notes = current_notes.copy()
+#     current_notes.clear()
+#
+# Creating midi file
 
-for index, notes_volumes in enumerate(notes_volumes_progress_table):
-    frame_notes = []
-    for note in notes_volumes:
-        note_max_volume = note[1]
-        for frame_index in range(index, len(notes_volumes_progress_table)):
-            note_found = False
-            for frame_note in notes_volumes_progress_table[frame_index]:
-                if frame_note[0] == note[0]:
-                    if frame_note[1] > note_max_volume:
-                        note_max_volume = frame_note[1]
-                    note_found = True
-            if not note_found:
-                break
-        frame_notes.append([note[0], note_max_volume])
-    notes_volumes_table.append(frame_notes)
-
-
-
-print(global_max_volume)
-
-# Creating midi
+# for counter, notes in enumerate(notes_names_table):
+#     for note_number, note in enumerate(notes):
+#         for ton in moll_tons:
+#             if note[:-1] in moll_tons[ton]:
+#                 if note[:-1] in active_notes:
+#                     del active_notes[note[:-1]]
+#                 else:
+#                     print(f'note: {note} counted for tone: {ton}')
+#                     tons_sounds_counters[ton] += notes_volumes_table[counter][note_number]
+#                     active_notes[note[:-1]] = 1
+#             else:
+#                 tons_sounds_counters[ton] -= notes_volumes_table[counter][note_number]
+#
+# found_ton = max(tons_sounds_counters, key=tons_sounds_counters.get)
+#
+# pprint(tons_sounds_counters)
+# print(f'found tone: {found_ton}')
 
 current_notes = []
 previous_notes = []
@@ -170,13 +189,13 @@ last_message_time = 0.0
 active_notes = {}
 
 for counter, notes in enumerate(notes_names_table):
-    delay_ticks = mido.second2tick(current_time - last_message_time, 120, mido.bpm2tempo(tempo))
+    delay_ticks = mido.second2tick(current_time - last_message_time, 160, mido.bpm2tempo(tempo))
     for note_number, note in enumerate(notes):
         if note not in previous_notes:
             if are_note_properties_ok(note, counter, active_notes):
                 track0.append(Message('note_on',
                                       note=int(note_to_midi[note]),
-                                      velocity=int((notes_volumes_table[counter][note_number][1] / global_max_volume) * 127),
+                                      velocity=64,
                                       time=delay_ticks))
                 print(f'Note {note} activated from frame No. {counter} at time {current_time}')
                 current_notes.append(note)
