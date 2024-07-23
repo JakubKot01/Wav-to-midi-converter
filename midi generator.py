@@ -4,11 +4,15 @@ import mido
 
 FILTER_VERBOSE = False
 
-tempo = 140
-FPS = 50
+BPM = 120
+FPS = 60
+
+TICKS_PER_BEAT = 960
+TICKS_PER_SECOND = (4 * 960) / (BPM / 60)
+TICKS_PER_FRAME = int((TICKS_PER_SECOND // FPS) / 4)
 
 frame_length = (1 / FPS)
-print(f'Frame length: {frame_length}')
+print(f'Frame length: {TICKS_PER_FRAME}')
 # ticks_per_quarter_note = 960
 
 # with open('big_notes_result_test.pickle', 'rb') as file:
@@ -72,13 +76,12 @@ tons_sounds_counters = {
 # TODO: Sprawdzić czy głośność narasta czy maleje
 
 def is_note_stable(note_name, counter):
-    if len(notes_names_table) - counter < 4:
+    if len(notes_names_table) - counter < 8:
         return True
 
-    if note_name not in notes_names_table[counter + 1] \
-            or note_name not in notes_names_table[counter + 2] \
-            or note_name not in notes_names_table[counter + 3]:
-        return False
+    for index in range(8):
+        if note_name not in notes_names_table[counter + index]:
+            return False
     return True
 
 def are_note_properties_ok(note_name, counter, active_notes):
@@ -87,7 +90,7 @@ def are_note_properties_ok(note_name, counter, active_notes):
     #    return False
 
     # Czy nuta jest przesunięta o jeden półton?
-    print(f"note_name: {note_name}")
+    # print(f"note_name: {note_name}")
     for note in active_notes:
         if note_to_midi[note_name] == note_to_midi[note] + 1 \
                 or note_to_midi[note_name] == note_to_midi[note] - 1:
@@ -109,6 +112,7 @@ def is_going_to_be_replaced(note, counter):
     return True
 
 mid = MidiFile(type=0)
+mid.ticks_per_beat = TICKS_PER_BEAT
 track0 = MidiTrack()
 mid.tracks.append(track0)
 
@@ -164,13 +168,14 @@ print(global_max_volume)
 
 current_notes = []
 previous_notes = []
-current_time = 0.0
-last_message_time = 0.0
+current_time = 0
+last_message_time = 0
 
 active_notes = {}
 
 for counter, notes in enumerate(notes_names_table):
-    delay_ticks = mido.second2tick(current_time - last_message_time, 120, mido.bpm2tempo(tempo))
+    # delay_ticks = mido.second2tick(current_time - last_message_time, 120, mido.bpm2tempo(tempo))
+    delay_ticks = current_time - last_message_time
     for note_number, note in enumerate(notes):
         if note not in previous_notes:
             if are_note_properties_ok(note, counter, active_notes):
@@ -178,7 +183,7 @@ for counter, notes in enumerate(notes_names_table):
                                       note=int(note_to_midi[note]),
                                       velocity=int((notes_volumes_table[counter][note_number][1] / global_max_volume) * 127),
                                       time=delay_ticks))
-                print(f'Note {note} activated from frame No. {counter} at time {current_time}')
+                # print(f'Note {note} activated from frame No. {counter} at time {current_time}')
                 current_notes.append(note)
                 active_notes[note] = current_time
                 last_message_time = current_time
@@ -192,12 +197,13 @@ for counter, notes in enumerate(notes_names_table):
                                   note=int(note_to_midi[note]),
                                   velocity=0,
                                   time=delay_ticks))
-            print(f'Note {note} deactivated from frame No. {counter} at time {current_time}')
+            # print(f'Note {note} deactivated from frame No. {counter} at time {current_time}')
             if note in active_notes:
                 del active_notes[note]
             last_message_time = current_time
 
-    current_time += frame_length
+    print(f'current time: {current_time}, frame number: {counter}')
+    current_time += TICKS_PER_FRAME
     previous_notes = current_notes.copy()
     current_notes.clear()
 

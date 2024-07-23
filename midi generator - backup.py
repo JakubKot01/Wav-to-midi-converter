@@ -8,6 +8,7 @@ FILTER_VERBOSE = False
 
 tempo = 80
 FPS = 50
+TICKS_PER_BEAT = 960
 
 frame_length = (1 / FPS)
 print(f'Frame length: {frame_length}')
@@ -122,6 +123,7 @@ note_to_midi = {
 }
 
 mid = MidiFile(type=0)
+mid.ticks_per_beat = TICKS_PER_BEAT
 track0 = MidiTrack()
 mid.tracks.append(track0)
 

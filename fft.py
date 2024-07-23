@@ -9,7 +9,7 @@ import pickle
 
 # Konfiguracja
 AUDIO_FILE = "dramatic piano - synthetic sample.wav"
-FPS = 50
+FPS = 60
 FFT_WINDOW_SECONDS = [0.1, 0.2, 0.4, 0.6, 0.8]  # ile sekund audio składa się na okno FFT
 FREQ_MIN = 10
 FREQ_MAX = 1000
@@ -143,6 +143,7 @@ def process_audio():
     for frame_index in range(frame_count):
         frame_notes = []
         frame_result = []
+        print(f"Frame index: {frame_index}", end=", ")
         for agent_notes_result in agents_notes_results:
             for note in agent_notes_result[frame_index]:
                 if note not in frame_notes:
