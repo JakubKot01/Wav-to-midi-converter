@@ -1,6 +1,6 @@
 import mido
 
-approximation_limit = 30
+approximation_limit = 240 # 32-note
 
 midi_to_note = {
     12: ["C0"],

@@ -1,6 +1,5 @@
 import pickle
 from mido import Message, MidiFile, MidiTrack
-import mido
 
 FILTER_VERBOSE = False
 
@@ -8,14 +7,11 @@ BPM = 120
 FPS = 60
 
 TICKS_PER_BEAT = 960
-TICKS_PER_SECOND = (4 * 960) / (BPM / 60)
-TICKS_PER_FRAME = int((TICKS_PER_SECOND // FPS) / 4)
+TICKS_PER_SECOND = TICKS_PER_BEAT / (BPM / 60)
+TICKS_PER_FRAME = int(TICKS_PER_SECOND // FPS)
 
-frame_length = (1 / FPS)
 print(f'Frame length: {TICKS_PER_FRAME}')
-# ticks_per_quarter_note = 960
 
-# with open('big_notes_result_test.pickle', 'rb') as file:
 with open('dramatic_piano_sample.pickle', 'rb') as file:
     big_notes_result = pickle.load(file)
 
@@ -35,8 +31,8 @@ note_to_midi = {
     "G#5": 80, "Ab5": 80, "A5": 81, "A#5": 82, "Bb5": 82, "B5": 83, "C6": 84, "C#6": 85,
     "Db6": 85, "D6": 86, "D#6": 87, "Eb6": 87, "E6": 88, "F6": 89, "F#6": 90, "Gb6": 90,
     "G6": 91, "G#6": 92, "Ab6": 92, "A6": 93, "A#6": 94, "Bb6": 94, "B6": 95, "C7": 96,
-    "C#7": 97, "Db7": 97, "D7": 98, "D#7": 99, "Eb7": 99, "E7": 100, "F7": 101, "F#7": 102, "Gb7": 102, "G7": 103,
-    "G#7": 104, "Ab7": 104, "A7": 105, "A#7": 106, "Bb7": 106, "B7": 107,
+    "C#7": 97, "Db7": 97, "D7": 98, "D#7": 99, "Eb7": 99, "E7": 100, "F7": 101, "F#7": 102,
+    "Gb7": 102, "G7": 103, "G#7": 104, "Ab7": 104, "A7": 105, "A#7": 106, "Bb7": 106, "B7": 107,
     "C8": 108, "C#8": 109, "Db8": 109, "D8": 110, "D#8": 111, "Eb8": 111, "E8": 112, "F8": 113,
     "F#8": 114, "Gb8": 114, "G8": 115, "G#8": 116, "Ab8": 116, "A8": 117, "A#8": 118, "Bb8": 118,
     "B8": 119, "C9": 120, "C#9": 121, "Db9": 121, "D9": 122, "D#9": 123, "Eb9": 123, "E9": 124,
@@ -44,34 +40,35 @@ note_to_midi = {
 }
 
 moll_tons = {
-    "C-moll": ["C", "D", "D#", "F", "G", "G#", "A#"],
+    "C-moll":  ["C", "D", "D#", "F", "G", "G#", "A#"],
     "C#-moll": ["C#", "D#", "E", "F#", "G#", "A", "B"],
-    "D-moll": ["D", "E", "F", "G", "A", "A#", "C"],
+    "D-moll":  ["D", "E", "F", "G", "A", "A#", "C"],
     "D#-moll": ["D#", "F", "F#", "G#", "A#", "B", "C#"],
-    "E-moll": ["E", "F#", "G", "A", "B", "C", "D"],
-    "F-moll": ["F", "G", "G#", "A#", "C", "C#", "D#"],
+    "E-moll":  ["E", "F#", "G", "A", "B", "C", "D"],
+    "F-moll":  ["F", "G", "G#", "A#", "C", "C#", "D#"],
     "F#-moll": ["F#", "G#", "A", "B", "C#", "D", "E"],
-    "G-moll": ["G", "A", "A#", "C", "D", "D#", "F"],
+    "G-moll":  ["G", "A", "A#", "C", "D", "D#", "F"],
     "G#-moll": ["G#", "A#", "B", "C#", "D#", "E", "F#"],
-    "A-moll": ["A", "B", "C", "D", "E", "F", "G"],
+    "A-moll":  ["A", "B", "C", "D", "E", "F", "G"],
     "A#-moll": ["A#", "C", "C#", "D#", "F", "F#", "G#"],
-    "H-moll": ["H", "C#", "D", "E", "F#", "G", "A"]
+    "H-moll":  ["H", "C#", "D", "E", "F#", "G", "A"]
 }
 
 tons_sounds_counters = {
-    "C-moll": 0.0,
+    "C-moll":  0.0,
     "C#-moll": 0.0,
-    "D-moll": 0.0,
+    "D-moll":  0.0,
     "D#-moll": 0.0,
-    "E-moll": 0.0,
-    "F-moll": 0.0,
+    "E-moll":  0.0,
+    "F-moll":  0.0,
     "F#-moll": 0.0,
-    "G-moll": 0.0,
+    "G-moll":  0.0,
     "G#-moll": 0.0,
-    "A-moll": 0.0,
+    "A-moll":  0.0,
     "A#-moll": 0.0,
-    "H-moll": 0.0
+    "H-moll":  0.0
 }
+
 
 # TODO: Sprawdzić czy głośność narasta czy maleje
 
@@ -83,6 +80,7 @@ def is_note_stable(note_name, counter):
         if note_name not in notes_names_table[counter + index]:
             return False
     return True
+
 
 def are_note_properties_ok(note_name, counter, active_notes):
     # Czy nuta jest w tonacji?
@@ -110,6 +108,7 @@ def is_going_to_be_replaced(note, counter):
                     and note_to_midi[note] != note_to_midi[incoming_notes] + 1:
                 return False
     return True
+
 
 mid = MidiFile(type=0)
 mid.ticks_per_beat = TICKS_PER_BEAT
@@ -160,8 +159,6 @@ for index, notes_volumes in enumerate(notes_volumes_progress_table):
         frame_notes.append([note[0], note_max_volume])
     notes_volumes_table.append(frame_notes)
 
-
-
 print(global_max_volume)
 
 # Creating midi
@@ -174,18 +171,18 @@ last_message_time = 0
 active_notes = {}
 
 for counter, notes in enumerate(notes_names_table):
-    # delay_ticks = mido.second2tick(current_time - last_message_time, 120, mido.bpm2tempo(tempo))
     delay_ticks = current_time - last_message_time
     for note_number, note in enumerate(notes):
         if note not in previous_notes:
             if are_note_properties_ok(note, counter, active_notes):
                 track0.append(Message('note_on',
                                       note=int(note_to_midi[note]),
-                                      velocity=int((notes_volumes_table[counter][note_number][1] / global_max_volume) * 127),
+                                      velocity=int(
+                                          (notes_volumes_table[counter][note_number][1] / global_max_volume) * 127),
                                       time=delay_ticks))
                 # print(f'Note {note} activated from frame No. {counter} at time {current_time}')
                 current_notes.append(note)
-                active_notes[note] = current_time
+                active_notes[note] = True
                 last_message_time = current_time
         else:
             current_notes.append(note)
