@@ -85,37 +85,33 @@ def is_note_stable(note_name, counter, notes_name_table):
     return True
 
 
-def is_dominating_note(note, second_note, counter, notes_name_table):
-    while counter != len(notes_names_table) - 1:
+def is_dominating_note(note, second_note, counter, notes_name_table, notes_volumes_table, note_number,
+                       second_note_number):
+    while counter < len(notes_names_table) - 1:
         if note not in notes_names_table[counter] and second_note in notes_name_table[counter]:
             return False
-        return True
+        elif note in notes_names_table[counter] and second_note not in notes_name_table[counter]:
+            return True
+        counter += 1
+
+    return notes_volumes_table[counter][note] > notes_volumes_table[counter][second_note]
 
 
-def are_note_properties_ok(note_name, counter, active_notes, notes_name_table):
+def are_note_properties_ok(note_name, counter, notes_name_table, notes_volumes_table, note_number):
     # Czy nuta jest w tonacji?
     # if note_name[:-1] not in moll_tons[found_ton]:
     #    return False
 
-    # Czy nuta jest przesunięta o jeden półton?
-    # print(f"note_name: {note_name}")
-
-    # print(f"\n\n\n\nNOTES NAME TABLE: {notes_name_table[counter]}\n\n\n\n")
-
-    # for note in notes_name_table[counter]:
-    #     if note_to_midi[note_name] == note_to_midi[note] - 1 or note_to_midi[note_name] == note_to_midi[note] + 1:
-    #         if not is_dominating_note(note_name, note, counter, notes_name_table):
-    #             print("LOST")
-    #             return False
-
     if not is_note_stable(note_name, counter, notes_name_table):
         return False
 
-    for second_note in notes_name_table[counter]:
+    for second_note_number, second_note in enumerate(notes_name_table[counter]):
         if second_note != note_name \
                 and (
-                note_to_midi[note_name] == note_to_midi[second_note] - 1 or note_to_midi[note_name] == note_to_midi[second_note] + 1):
-            if not is_dominating_note(note_name, second_note, counter, notes_name_table):
+                note_to_midi[note_name] == note_to_midi[second_note] - 1 or note_to_midi[note_name] == note_to_midi[
+            second_note] + 1):
+            if not is_dominating_note(note_name, second_note, counter, notes_name_table, notes_volumes_table,
+                                      note_number, second_note_number):
                 return False
     return True
 
@@ -239,7 +235,7 @@ for counter, notes in enumerate(notes_names_table):
     print(f"{notes}", end="\t")
     for note_number, note in enumerate(notes):
         if note not in previous_notes:
-            if are_note_properties_ok(note, counter, active_notes, notes_names_table):
+            if are_note_properties_ok(note, counter, notes_names_table, notes_volumes_table, note_number):
                 track0.append(Message('note_on',
                                       note=int(note_to_midi[note]),
                                       velocity=int(
@@ -269,5 +265,40 @@ for counter, notes in enumerate(notes_names_table):
     previous_notes = current_notes.copy()
     current_notes.clear()
     current_time += TICKS_PER_FRAME
+
+
+def pimp_my_bass(track):
+    track_copy = track.copy()
+    active_corresponding_notes = []
+    for counter, event in enumerate(track):
+        if event.type == 'note_on':
+            if event.note < note_to_midi["C4"]:
+                print(event)
+                additional_note = event.note - 24
+                left_slice = track_copy[:counter]
+                right_slice = track_copy[:counter]
+                left_slice.append(Message('note_on',
+                                          note=additional_note,
+                                          velocity=event.velocity,
+                                          time=event.time))
+                track_copy = left_slice + right_slice
+                active_corresponding_notes.append(event.note)
+        elif event.type == 'note_off':
+            if event.note in active_corresponding_notes:
+                print(event)
+                additional_note = event.note - 24
+                left_slice = track_copy[:counter]
+                right_slice = track_copy[:counter]
+                left_slice.append(Message('note_off',
+                                          note=additional_note,
+                                          velocity=event.velocity,
+                                          time=event.time))
+                track_copy = left_slice + right_slice
+                active_corresponding_notes.remove(event.note)
+
+    return track_copy
+
+
+# track0 = pimp_my_bass(track0)
 
 mid.save('piano_sample.mid')
