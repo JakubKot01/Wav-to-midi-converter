@@ -3,14 +3,17 @@ from mido import Message, MidiFile, MidiTrack
 
 FILTER_VERBOSE = False
 
-BPM = 120
+BPM = 130
 FPS = 60
 
-TICKS_PER_BEAT = 960
-TICKS_PER_SECOND = TICKS_PER_BEAT / (BPM / 60)
-TICKS_PER_FRAME = int(TICKS_PER_SECOND // FPS)
+TICKS_PER_QUARTER_NOTE = 960
+# TICKS_PER_SECOND = TICKS_PER_QUARTER_NOTE * (BPM / 100)
+TICKS_PER_FRAME = int((TICKS_PER_QUARTER_NOTE * BPM) / (60 * FPS))
 
-print(f'Frame length: {TICKS_PER_FRAME}')
+TICKS_PER_EIGHTH_NOTE = int(TICKS_PER_QUARTER_NOTE / 2)
+TICKS_PER_SIXTEENTH_NOTE = int(TICKS_PER_EIGHTH_NOTE / 2)
+
+print(f'Frame length: {TICKS_PER_FRAME}, ticks per eighth note: {TICKS_PER_EIGHTH_NOTE}')
 
 with open('dramatic_piano_sample.pickle', 'rb') as file:
     big_notes_result = pickle.load(file)
@@ -72,7 +75,7 @@ tons_sounds_counters = {
 
 # TODO: Sprawdzić czy głośność narasta czy maleje
 
-def is_note_stable(note_name, counter):
+def is_note_stable(note_name, counter, notes_name_table):
     if len(notes_names_table) - counter < 8:
         return True
 
@@ -82,27 +85,44 @@ def is_note_stable(note_name, counter):
     return True
 
 
-def are_note_properties_ok(note_name, counter, active_notes):
+def is_dominating_note(note, second_note, counter, notes_name_table):
+    while counter != len(notes_names_table) - 1:
+        if note not in notes_names_table[counter] and second_note in notes_name_table[counter]:
+            return False
+        return True
+
+def are_note_properties_ok(note_name, counter, active_notes, notes_name_table):
     # Czy nuta jest w tonacji?
     # if note_name[:-1] not in moll_tons[found_ton]:
     #    return False
 
     # Czy nuta jest przesunięta o jeden półton?
     # print(f"note_name: {note_name}")
-    for note in active_notes:
-        if note_to_midi[note_name] == note_to_midi[note] + 1 \
-                or note_to_midi[note_name] == note_to_midi[note] - 1:
-            return False
 
-    if is_note_stable(note_name, counter):
-        return True
-    return False
+    # print(f"\n\n\n\nNOTES NAME TABLE: {notes_name_table[counter]}\n\n\n\n")
 
+    # for note in notes_name_table[counter]:
+    #     if note_to_midi[note_name] == note_to_midi[note] - 1 or note_to_midi[note_name] == note_to_midi[note] + 1:
+    #         if not is_dominating_note(note_name, note, counter, notes_name_table):
+    #             print("LOST")
+    #             return False
 
-def is_going_to_be_replaced(note, counter):
-    if len(notes_names_table) - counter < 5:
+    if not is_note_stable(note_name, counter, notes_name_table):
         return False
-    for i in range(counter, counter + 5):
+
+    # for note in notes_name_table[counter]:
+    #     if note_to_midi[note_name] == note_to_midi[note] - 1 or note_to_midi[note_name] == note_to_midi[note] + 1:
+    #         print("DUPA")
+    #         if not is_dominating_note(note_name, note, counter, notes_name_table):
+    #             print("LOST")
+    #             return False
+    return True
+
+
+def is_going_to_be_replaced(note, counter, depth=10):
+    if len(notes_names_table) - counter < depth:
+        return False
+    for i in range(counter, counter + depth):
         for incoming_notes in notes_names_table[i]:
             if note_to_midi[note] != note_to_midi[incoming_notes] - 1 \
                     and note_to_midi[note] != note_to_midi[incoming_notes] + 1:
@@ -111,7 +131,7 @@ def is_going_to_be_replaced(note, counter):
 
 
 mid = MidiFile(type=0)
-mid.ticks_per_beat = TICKS_PER_BEAT
+mid.ticks_per_beat = TICKS_PER_QUARTER_NOTE
 track0 = MidiTrack()
 mid.tracks.append(track0)
 
@@ -125,11 +145,50 @@ previous_notes = []
 notes_names_table = []
 notes_volumes_progress_table = []
 
+
+def is_note_lost(note, current_notes, future_notes):
+    if note not in current_notes and note in future_notes:
+        return True
+    return False
+
+
+def stabilize_notes(big_notes_result):
+    preprocessed_notes = big_notes_result.copy()
+    for index, notes in enumerate(big_notes_result):
+        # print(notes)
+        previous_notes = []
+        current_notes = []
+        future_notes = []
+
+        for note in notes:
+            current_notes.append(note[1])
+
+        if index != 0:
+            for note in preprocessed_notes[index - 1]:
+                previous_notes.append(note)
+
+        if index != len(preprocessed_notes) - 1:
+            for note in preprocessed_notes[index + 1]:
+                future_notes.append(note[1])
+
+        if not previous_notes or not future_notes:
+            continue
+
+        for note in previous_notes:
+            if is_note_lost(note[1], current_notes, future_notes):
+                # print(note)
+                preprocessed_notes[index].append(note)
+
+    return preprocessed_notes
+
+big_notes_result = stabilize_notes(big_notes_result)
+
 for notes in big_notes_result:
     current_notes = []
     current_volumes = []
     for note in notes:
-        if note[1] in note_to_midi:
+        if note[1] in note_to_midi and note[1] not in current_notes:
+            # print(note[1])
             current_notes.append(note[1])
             current_volumes.append([note[1], note[2]])
     notes_names_table.append(current_notes)
@@ -167,41 +226,46 @@ current_notes = []
 previous_notes = []
 current_time = 0
 last_message_time = 0
+last_sixteenth_note_time = 0
 
 active_notes = {}
 
 for counter, notes in enumerate(notes_names_table):
     delay_ticks = current_time - last_message_time
+    if delay_ticks % TICKS_PER_SIXTEENTH_NOTE == 0:
+        last_sixteenth_note_time = current_time
+    print(f"{notes}", end="\t")
     for note_number, note in enumerate(notes):
         if note not in previous_notes:
-            if are_note_properties_ok(note, counter, active_notes):
+            if are_note_properties_ok(note, counter, active_notes, notes_names_table):
                 track0.append(Message('note_on',
                                       note=int(note_to_midi[note]),
                                       velocity=int(
                                           (notes_volumes_table[counter][note_number][1] / global_max_volume) * 127),
-                                      time=delay_ticks))
-                # print(f'Note {note} activated from frame No. {counter} at time {current_time}')
+                                      time=last_sixteenth_note_time - last_message_time))
+                print(f'Note {note} activated from frame No. {counter} at time {last_sixteenth_note_time}')
                 current_notes.append(note)
                 active_notes[note] = True
-                last_message_time = current_time
+                last_message_time = last_sixteenth_note_time
         else:
             current_notes.append(note)
 
     for note in previous_notes:
-        if note not in current_notes \
-                or is_going_to_be_replaced(note, counter):
+        if note not in current_notes: #\
+                # or is_going_to_be_replaced(note, counter):
             track0.append(Message('note_off',
                                   note=int(note_to_midi[note]),
                                   velocity=0,
-                                  time=delay_ticks))
-            # print(f'Note {note} deactivated from frame No. {counter} at time {current_time}')
-            if note in active_notes:
-                del active_notes[note]
-            last_message_time = current_time
+                                  time=last_sixteenth_note_time - last_message_time))
+            print(f'Note {note} deactivated from frame No. {counter} at time {last_sixteenth_note_time}')
+            if active_notes[note]:
+                active_notes[note] = False
+            last_message_time = last_sixteenth_note_time
 
-    print(f'current time: {current_time}, frame number: {counter}')
-    current_time += TICKS_PER_FRAME
+    print("\n")
+    # print(f'current time: {current_time}, frame number: {counter}')
     previous_notes = current_notes.copy()
     current_notes.clear()
+    current_time += TICKS_PER_FRAME
 
-mid.save('dramatic_piano_sample.mid')
+mid.save('cello_piano_sample.mid')
