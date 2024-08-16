@@ -3,7 +3,7 @@ from mido import Message, MidiFile, MidiTrack
 
 FILTER_VERBOSE = False
 
-BPM = 130
+BPM = 120
 FPS = 60
 
 TICKS_PER_QUARTER_NOTE = 960
@@ -15,7 +15,7 @@ TICKS_PER_SIXTEENTH_NOTE = int(TICKS_PER_EIGHTH_NOTE / 2)
 
 print(f'Frame length: {TICKS_PER_FRAME}, ticks per eighth note: {TICKS_PER_EIGHTH_NOTE}')
 
-with open('dramatic_piano_sample.pickle', 'rb') as file:
+with open('piano_sample.pickle', 'rb') as file:
     big_notes_result = pickle.load(file)
 
 note_to_midi = {
@@ -43,33 +43,33 @@ note_to_midi = {
 }
 
 moll_tons = {
-    "C-moll":  ["C", "D", "D#", "F", "G", "G#", "A#"],
+    "C-moll": ["C", "D", "D#", "F", "G", "G#", "A#"],
     "C#-moll": ["C#", "D#", "E", "F#", "G#", "A", "B"],
-    "D-moll":  ["D", "E", "F", "G", "A", "A#", "C"],
+    "D-moll": ["D", "E", "F", "G", "A", "A#", "C"],
     "D#-moll": ["D#", "F", "F#", "G#", "A#", "B", "C#"],
-    "E-moll":  ["E", "F#", "G", "A", "B", "C", "D"],
-    "F-moll":  ["F", "G", "G#", "A#", "C", "C#", "D#"],
+    "E-moll": ["E", "F#", "G", "A", "B", "C", "D"],
+    "F-moll": ["F", "G", "G#", "A#", "C", "C#", "D#"],
     "F#-moll": ["F#", "G#", "A", "B", "C#", "D", "E"],
-    "G-moll":  ["G", "A", "A#", "C", "D", "D#", "F"],
+    "G-moll": ["G", "A", "A#", "C", "D", "D#", "F"],
     "G#-moll": ["G#", "A#", "B", "C#", "D#", "E", "F#"],
-    "A-moll":  ["A", "B", "C", "D", "E", "F", "G"],
+    "A-moll": ["A", "B", "C", "D", "E", "F", "G"],
     "A#-moll": ["A#", "C", "C#", "D#", "F", "F#", "G#"],
-    "H-moll":  ["H", "C#", "D", "E", "F#", "G", "A"]
+    "H-moll": ["H", "C#", "D", "E", "F#", "G", "A"]
 }
 
 tons_sounds_counters = {
-    "C-moll":  0.0,
+    "C-moll": 0.0,
     "C#-moll": 0.0,
-    "D-moll":  0.0,
+    "D-moll": 0.0,
     "D#-moll": 0.0,
-    "E-moll":  0.0,
-    "F-moll":  0.0,
+    "E-moll": 0.0,
+    "F-moll": 0.0,
     "F#-moll": 0.0,
-    "G-moll":  0.0,
+    "G-moll": 0.0,
     "G#-moll": 0.0,
-    "A-moll":  0.0,
+    "A-moll": 0.0,
     "A#-moll": 0.0,
-    "H-moll":  0.0
+    "H-moll": 0.0
 }
 
 
@@ -91,6 +91,7 @@ def is_dominating_note(note, second_note, counter, notes_name_table):
             return False
         return True
 
+
 def are_note_properties_ok(note_name, counter, active_notes, notes_name_table):
     # Czy nuta jest w tonacji?
     # if note_name[:-1] not in moll_tons[found_ton]:
@@ -110,12 +111,12 @@ def are_note_properties_ok(note_name, counter, active_notes, notes_name_table):
     if not is_note_stable(note_name, counter, notes_name_table):
         return False
 
-    # for note in notes_name_table[counter]:
-    #     if note_to_midi[note_name] == note_to_midi[note] - 1 or note_to_midi[note_name] == note_to_midi[note] + 1:
-    #         print("DUPA")
-    #         if not is_dominating_note(note_name, note, counter, notes_name_table):
-    #             print("LOST")
-    #             return False
+    for second_note in notes_name_table[counter]:
+        if second_note != note_name \
+                and (
+                note_to_midi[note_name] == note_to_midi[second_note] - 1 or note_to_midi[note_name] == note_to_midi[second_note] + 1):
+            if not is_dominating_note(note_name, second_note, counter, notes_name_table):
+                return False
     return True
 
 
@@ -180,6 +181,7 @@ def stabilize_notes(big_notes_result):
                 preprocessed_notes[index].append(note)
 
     return preprocessed_notes
+
 
 big_notes_result = stabilize_notes(big_notes_result)
 
@@ -251,8 +253,8 @@ for counter, notes in enumerate(notes_names_table):
             current_notes.append(note)
 
     for note in previous_notes:
-        if note not in current_notes: #\
-                # or is_going_to_be_replaced(note, counter):
+        if note not in current_notes:  # \
+            # or is_going_to_be_replaced(note, counter):
             track0.append(Message('note_off',
                                   note=int(note_to_midi[note]),
                                   velocity=0,
@@ -268,4 +270,4 @@ for counter, notes in enumerate(notes_names_table):
     current_notes.clear()
     current_time += TICKS_PER_FRAME
 
-mid.save('cello_piano_sample.mid')
+mid.save('piano_sample.mid')
