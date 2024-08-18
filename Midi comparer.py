@@ -1,6 +1,6 @@
 import mido
 
-approximation_limit = 240 # 32-note
+approximation_limit = 240 # 16-note
 
 midi_to_note = {
     12: ["C0"],
@@ -133,6 +133,7 @@ def read_midi_notes(file_path):
                 notes.append((current_time, msg.note))
                 print(current_time, end=", ")
 
+    print("\n")
     return notes
 
 
@@ -170,7 +171,7 @@ def compare_midi_files(file1, file2):
 
 # Przykład użycia
 file1 = 'dramatic piano - how should it be.mid'
-file2 = 'dramatic_piano_sample.mid'
+file2 = 'piano_sample.mid'
 
 matched_notes_count, percentage_match, matched_notes_set, almost_matched_count, percentage_almost_match, almost_matched_notes_set = compare_midi_files(file1, file2)
 
